@@ -10,6 +10,7 @@ export type AlgorithmSettings = {
     layers: number,
     width: number,
     height: number,
+    superResolution: number,
 }
 
 export type AppState = {
@@ -65,6 +66,7 @@ function updateAppState(state: AppState, action: AppUpdateAction) {
                 layers: 5,
                 width: 256,
                 height: 256,
+                superResolution: 1,
             }
             break
         case "start":
@@ -111,6 +113,7 @@ export function useAppState() {
             layers: 5,
             width: 256,
             height: 256,
+            superResolution: 1,
         },
         sourceImage: null,
         requestRun: false

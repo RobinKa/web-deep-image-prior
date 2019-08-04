@@ -42,13 +42,31 @@ function drawImageTensor(ctx: CanvasRenderingContext2D, imageTensor: number[][][
 export function Painter(props: PainterProps) {
     const { state, dispatchState } = props
 
+    const [outWidth, outHeight] = [state.algorithmSettings.width, state.algorithmSettings.height]
+
     const [model, setModel] = useState<tf.LayersModel | null>(null)
     const [noise, setNoise] = useState<tf.Tensor<tf.Rank> | null>(null)
     const [imageTensor, setImageTensor] = useState<tf.Tensor<tf.Rank> | null>(null)
 
     const canvas = useMemo(() => {
-        return createMemoryCanvas(state.algorithmSettings.width, state.algorithmSettings.height)
-    }, [state.algorithmSettings.width, state.algorithmSettings.height])
+        return createMemoryCanvas(outWidth, outHeight)
+    }, [outWidth, outHeight])
+
+    function loss(x: tf.Tensor, y: tf.Tensor) {
+        if (state.algorithmSettings.superResolution > 1) {
+            const newShape: [number, number] = [x.shape[1]! / state.algorithmSettings.superResolution, x.shape[2]! / state.algorithmSettings.superResolution]
+
+            const rescaledX = tf.mul(tf.add(x, 1), 0.5)
+            const rescaledY = tf.mul(tf.add(y, 1), 0.5)
+
+            const resizedX = tf.sub(tf.mul(2, tf.image.resizeBilinear(rescaledX as tf.Tensor4D, newShape, true)), 1)
+            const resizedY = tf.sub(tf.mul(2, tf.image.resizeBilinear(rescaledY as tf.Tensor4D, newShape, true)), 1)
+
+            return tf.losses.absoluteDifference(resizedX, resizedY)
+        }
+
+        return tf.losses.absoluteDifference(x, y)
+    }
 
     useEffect(() => {
         if (state.requestRun) {
@@ -57,18 +75,18 @@ export function Painter(props: PainterProps) {
             let it = imageTensor
 
             if (m === null || n === null || it === null) {
-                const noiseShape: [number, number, number] = [state.algorithmSettings.width, state.algorithmSettings.height, 1]
+                const noiseShape: [number, number, number] = [outWidth, outHeight, 1]
                 const outputFilters = 3
 
                 m = createUNet(noiseShape, outputFilters, state.algorithmSettings.layers, state.algorithmSettings.filters)
                 m.compile({
                     optimizer: "adam",
-                    loss: "meanAbsoluteError",
+                    loss: loss,
                 })
 
                 n = tf.randomNormal([1].concat(noiseShape))
 
-                it = imageTensorFromFlatArray(state.sourceImage!, state.algorithmSettings.width, state.algorithmSettings.height)
+                it = imageTensorFromFlatArray(state.sourceImage!, outWidth, outHeight)
 
                 setModel(m)
                 setNoise(n)
@@ -100,7 +118,7 @@ export function Painter(props: PainterProps) {
                     })
                 }
                 catch {
-                    
+
                 }
 
                 dispatchState({

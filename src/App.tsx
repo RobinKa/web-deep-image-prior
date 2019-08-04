@@ -14,6 +14,7 @@ import "react-responsive-carousel/lib/styles/carousel.min.css"
 const [defaultWidth, defaultHeight] = [256, 256]
 const defaultLayers = 5
 const defaultFilters = 8
+const defaultSuperResolution = 1
 
 const App: React.FC = () => {
     const [state, dispatchState] = useAppState()
@@ -54,6 +55,16 @@ const App: React.FC = () => {
             newSettings: {
                 ...state.algorithmSettings,
                 filters: value
+            }
+        })
+    }
+
+    function setSuperResolution(value: number) {
+        dispatchState({
+            type: "algorithmSettings",
+            newSettings: {
+                ...state.algorithmSettings,
+                superResolution: value
             }
         })
     }
@@ -144,6 +155,10 @@ const App: React.FC = () => {
                 <div style={{ textAlign: "center" }}>
                     <Slider disabled={state.generating || state.running} defaultValue={defaultFilters} min={1} max={256} step={1} onChange={value => setFilters(value)} />
                     <label>Filters: {state.algorithmSettings.filters}</label>
+                </div>
+                <div style={{ textAlign: "center" }}>
+                    <Slider disabled={state.generating || state.running} defaultValue={defaultSuperResolution} min={1} max={32} step={1} onChange={value => setSuperResolution(value)} />
+                    <label>Super-resolution: {state.algorithmSettings.superResolution}</label>
                 </div>
 
                 <div style={{ textAlign: "center" }} {...getRootProps()}>
