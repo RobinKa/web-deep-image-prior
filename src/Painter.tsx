@@ -11,7 +11,7 @@ type PainterProps = {
 }
 
 function imageTensorFromFlatArray(flat: number[], width: number, height: number) {
-    return tf.sub(tf.div(tf.tensor1d(flat).reshape([1, width, height, 4]).slice([0, 0, 0, 0], [1, width, height, 3]), 127.5), 1)
+    return tf.transpose(tf.sub(tf.div(tf.tensor1d(flat).reshape([1, height, width, 4]).slice([0, 0, 0, 0], [1, height, width, 3]), 127.5), 1), [0, 2, 1, 3])
 }
 
 function createMemoryCanvas(width: number, height: number) {
@@ -29,9 +29,9 @@ function drawImageTensor(ctx: CanvasRenderingContext2D, imageTensor: number[][][
     for (let x = 0; x < width; x++) {
         for (let y = 0; y < height; y++) {
             const i = x + y * width
-            imageData.data[i * 4 + 0] = Math.min(255, Math.max(0, 127.5 * (1 + imageTensor[0][y][x][0])))
-            imageData.data[i * 4 + 1] = Math.min(255, Math.max(0, 127.5 * (1 + imageTensor[0][y][x][1])))
-            imageData.data[i * 4 + 2] = Math.min(255, Math.max(0, 127.5 * (1 + imageTensor[0][y][x][2])))
+            imageData.data[i * 4 + 0] = Math.min(255, Math.max(0, 127.5 * (1 + imageTensor[0][x][y][0])))
+            imageData.data[i * 4 + 1] = Math.min(255, Math.max(0, 127.5 * (1 + imageTensor[0][x][y][1])))
+            imageData.data[i * 4 + 2] = Math.min(255, Math.max(0, 127.5 * (1 + imageTensor[0][x][y][2])))
             imageData.data[i * 4 + 3] = 255
         }
     }
