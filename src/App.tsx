@@ -13,7 +13,7 @@ import "react-responsive-carousel/lib/styles/carousel.min.css"
 
 const [defaultWidth, defaultHeight] = [256, 256]
 const defaultLayers = 5
-const defaultFilters = 32
+const defaultFilters = 8
 
 const App: React.FC = () => {
     const [state, dispatchState] = useAppState()

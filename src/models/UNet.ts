@@ -10,7 +10,7 @@ export function createUNet(inputShape: [number, number, number], outputFilters: 
             kernelSize: [4, 4],
             padding: "same",
             strides: 2,
-            activation: "relu",
+            activation: "elu",
         }).apply(downs[downs.length - 1]) as tf.SymbolicTensor)
     }
 
@@ -23,7 +23,7 @@ export function createUNet(inputShape: [number, number, number], outputFilters: 
             kernelSize: [4, 4],
             padding: "same",
             strides: 2,
-            activation: "relu",
+            activation: "elu",
         }).apply(ups[ups.length - 1]) as tf.SymbolicTensor
 
         const concatenated = tf.layers.concatenate({axis: -1}).apply([upsampled, downs[layers - i - 1]])
@@ -33,7 +33,7 @@ export function createUNet(inputShape: [number, number, number], outputFilters: 
             kernelSize: [4, 4],
             padding: "same",
             strides: 1,
-            activation: last ? "tanh" : "relu",
+            activation: last ? "tanh" : "elu",
         }).apply(concatenated) as tf.SymbolicTensor
 
         ups.push(processed)

@@ -63,7 +63,7 @@ export function Painter(props: PainterProps) {
                 m = createUNet(noiseShape, outputFilters, state.algorithmSettings.layers, state.algorithmSettings.filters)
                 m.compile({
                     optimizer: "adam",
-                    loss: "meanSquaredError",
+                    loss: "meanAbsoluteError",
                 })
 
                 n = tf.randomNormal([1].concat(noiseShape))

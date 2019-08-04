@@ -61,7 +61,7 @@ function updateAppState(state: AppState, action: AppUpdateAction) {
             newState.iteration = 0
             newState.requestRun = false
             newState.algorithmSettings = {
-                filters: 32,
+                filters: 8,
                 layers: 5,
                 width: 256,
                 height: 256,
@@ -107,7 +107,7 @@ export function useAppState() {
         iteration: 0,
         images: [],
         algorithmSettings: {
-            filters: 32,
+            filters: 8,
             layers: 5,
             width: 256,
             height: 256,
