@@ -1,104 +1,140 @@
 import * as tf from "@tensorflow/tfjs"
-import React from "react"
+import React, { Dispatch, useEffect, useState, useMemo } from "react"
 import { createUNet } from "./models/UNet"
-import { useDropzone } from 'react-dropzone'
+import { AppState, AppUpdateAction } from "./AppState"
 
 tf.enableProdMode()
 
 type PainterProps = {
-    width: number,
-    height: number,
-    filters: number,
-    layers: number,
-    iterations: number,
-    setGenerating: (generating: boolean) => void,
+    state: AppState,
+    dispatchState: Dispatch<AppUpdateAction>
+}
+
+function imageTensorFromFlatArray(flat: number[], width: number, height: number) {
+    return tf.sub(tf.div(tf.tensor1d(flat).reshape([1, width, height, 4]).slice([0, 0, 0, 0], [1, width, height, 3]), 127.5), 1)
+}
+
+function createMemoryCanvas(width: number, height: number) {
+    const canvas = document.createElement("canvas")
+    canvas.width = width
+    canvas.height = height
+    return canvas
+}
+
+function drawImageTensor(ctx: CanvasRenderingContext2D, imageTensor: number[][][][]) {
+    const [width, height] = [ctx.canvas.width, ctx.canvas.height]
+
+    const imageData = ctx.createImageData(width, height)
+
+    for (let x = 0; x < width; x++) {
+        for (let y = 0; y < height; y++) {
+            const i = x + y * width
+            imageData.data[i * 4 + 0] = Math.min(255, Math.max(0, 127.5 * (1 + imageTensor[0][y][x][0])))
+            imageData.data[i * 4 + 1] = Math.min(255, Math.max(0, 127.5 * (1 + imageTensor[0][y][x][1])))
+            imageData.data[i * 4 + 2] = Math.min(255, Math.max(0, 127.5 * (1 + imageTensor[0][y][x][2])))
+            imageData.data[i * 4 + 3] = 255
+        }
+    }
+
+    ctx.putImageData(imageData, 0, 0)
 }
 
 export function Painter(props: PainterProps) {
-    function onImageSelected(files: File[]) {
-        const image = new Image()
+    const { state, dispatchState } = props
 
-        image.onload = function (evt: any) {
-            const canvas = document.createElement("canvas")
-            canvas.width = props.width
-            canvas.height = props.height
-            const context = canvas.getContext("2d")!
-            context.drawImage(image, 0, 0, props.width, props.height)
-            const imageData = context.getImageData(0, 0, props.width, props.height).data
-            run(Array.from(imageData))
-        }
+    const [model, setModel] = useState<tf.LayersModel | null>(null)
+    const [noise, setNoise] = useState<tf.Tensor<tf.Rank> | null>(null)
+    const [imageTensor, setImageTensor] = useState<tf.Tensor<tf.Rank> | null>(null)
 
-        const file = files[0]
+    const canvas = useMemo(() => {
+        return createMemoryCanvas(state.algorithmSettings.width, state.algorithmSettings.height)
+    }, [state.algorithmSettings.width, state.algorithmSettings.height])
 
-        const reader = new FileReader()
+    useEffect(() => {
+        if (state.requestRun) {
+            let m = model
+            let n = noise
+            let it = imageTensor
 
-        reader.onload = function (evt: any) {
-            if (evt.target.readyState === FileReader.DONE) {
-                image.src = evt.target.result
+            if (m === null || n === null || it === null) {
+                const noiseShape: [number, number, number] = [state.algorithmSettings.width, state.algorithmSettings.height, 1]
+                const outputFilters = 3
+
+                m = createUNet(noiseShape, outputFilters, state.algorithmSettings.layers, state.algorithmSettings.filters)
+                m.compile({
+                    optimizer: "adam",
+                    loss: "meanSquaredError",
+                })
+
+                n = tf.randomNormal([1].concat(noiseShape))
+
+                it = imageTensorFromFlatArray(state.sourceImage!, state.algorithmSettings.width, state.algorithmSettings.height)
+
+                setModel(m)
+                setNoise(n)
+                setImageTensor(it)
             }
-        }
 
-        reader.readAsDataURL(file)
-    }
+            (async () => {
+                try {
+                    dispatchState({
+                        type: "setRunning",
+                        running: true
+                    })
 
-    async function run(flatImage: number[]) {
-        const canvas = document.createElement("canvas")
-        canvas.width = props.width
-        canvas.height = props.height
-        const ctx = canvas.getContext("2d")!
-        const imageData = ctx.createImageData(props.width, props.height)
+                    await m.fit(n, it, {
+                        batchSize: 1,
+                        epochs: 20,
+                    })
 
-        const imageTensor = tf.sub(tf.div(tf.tensor1d(flatImage).reshape([1, props.width, props.height, 4]).slice([0, 0, 0, 0], [1, props.width, props.height, 3]), 127.5), 1)
+                    const output = await (m.predict(n) as tf.Tensor).array() as number[][][][]
 
-        const noiseShape: [number, number, number] = [props.width, props.height, 1]
-        const outputFilters = 3
+                    drawImageTensor(canvas.getContext("2d")!, output)
 
-        const model = createUNet(noiseShape, outputFilters, props.layers, props.filters)
-        model.compile({
-            optimizer: "adam",
-            loss: "meanSquaredError",
-        })
-
-        const noise = tf.randomNormal([1].concat(noiseShape))
-
-        for (let iter = 0; iter < props.iterations; iter++) {
-            await model.fit(noise, imageTensor, {
-                batchSize: 1,
-                epochs: 20,
-            })
-
-            const pred = await (model.predict(noise) as tf.Tensor).array() as number[][][][]
-
-            for (let x = 0; x < props.width; x++) {
-                for (let y = 0; y < props.height; y++) {
-                    const i = x + y * props.width
-                    imageData.data[i * 4 + 0] = Math.min(255, Math.max(0, 127.5 * (1 + pred[0][y][x][0])))
-                    imageData.data[i * 4 + 1] = Math.min(255, Math.max(0, 127.5 * (1 + pred[0][y][x][1])))
-                    imageData.data[i * 4 + 2] = Math.min(255, Math.max(0, 127.5 * (1 + pred[0][y][x][2])))
-                    imageData.data[i * 4 + 3] = 255
+                    dispatchState({
+                        type: "addImageData",
+                        imageData: {
+                            iteration: state.iteration,
+                            uri: canvas.toDataURL("image/png")
+                        }
+                    })
                 }
+                catch {
+                    
+                }
+
+                dispatchState({
+                    type: "setRunning",
+                    running: false
+                })
+
+                dispatchState({
+                    type: "setRequestRun",
+                    requestRun: false
+                })
+            })()
+        }
+    }, [state.requestRun])
+
+    useEffect(() => {
+        if (!state.generating) {
+            if (model !== null) {
+                model.dispose()
             }
 
-            ctx.putImageData(imageData, 0, 0)
-            const domImage = document.createElement("img")
-            domImage.src = canvas.toDataURL("image/png")
-            document.body.appendChild(domImage)
+            if (imageTensor !== null) {
+                imageTensor.dispose()
+            }
+
+            if (noise !== null) {
+                noise.dispose()
+            }
+
+            setModel(null)
+            setImageTensor(null)
+            setNoise(null)
         }
-    }
+    }, [state.generating])
 
-    const { getRootProps, getInputProps } = useDropzone({
-        accept: "image/*",
-        onDrop: onImageSelected
-    })
-
-    return (
-        <div>
-            <div style={{ marginTop: "10px", marginBottom: "10px", textAlign: "center" }}>
-                <div {...getRootProps()}>
-                    <input {...getInputProps()} />
-                    <p>Drag 'n' drop some files here, or click to select files</p>
-                </div>
-            </div>
-        </div>
-    )
+    return <div />
 }
