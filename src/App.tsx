@@ -11,9 +11,10 @@ import { Carousel } from "react-responsive-carousel"
 import FileSaver from "file-saver"
 import "react-responsive-carousel/lib/styles/carousel.min.css"
 
-import sampleImage1 from "./sample-images/balloons_noisy.png"
+import sampleImage1 from "./sample-images/car_inpaint.png"
 import sampleImage2 from "./sample-images/lenna_noisy.png"
 import sampleImage3 from "./sample-images/tiny_fruits.png"
+import DrawableCanvas from './DrawableCanvas';
 
 const [defaultWidth, defaultHeight] = [256, 256]
 const defaultLayers = 5
@@ -62,12 +63,29 @@ const App: React.FC = () => {
         })
     }
 
+    function setInpaint(value: boolean) {
+        dispatchState({
+            type: "algorithmSettings",
+            newSettings: {
+                ...state.algorithmSettings,
+                inpaint: value
+            }
+        })
+    }
+
     useEffect(() => {
         if (state.generating && !state.requestRun) {
             dispatchState({ type: "incrementIteration" })
             dispatchState({ type: "setRequestRun", requestRun: true })
         }
     }, [state.requestRun, state.generating, dispatchState])
+
+    useEffect(() => {
+        if (state.mask && !state.generating && !state.requestMask) {
+            console.log("Start")
+            dispatchState({ type: "start" })
+        }
+    }, [state.requestMask, state.generating, dispatchState, state.mask])
 
     const canvas = useRef<HTMLCanvasElement>(null)
 
@@ -138,7 +156,7 @@ const App: React.FC = () => {
                     <Nav.Link href="https://arxiv.org/abs/1711.10925">Paper</Nav.Link>
                 </Navbar>
             </Container>
-            <Container style={{marginTop: "20px"}}>
+            <Container style={{ marginTop: "20px" }}>
                 <Col>
                     <Row>
                         <Col>
@@ -173,13 +191,20 @@ const App: React.FC = () => {
                                 <Slider disabled={state.generating || state.running} defaultValue={defaultFilters} min={1} max={256} step={1} onChange={value => setFilters(value)} />
                                 <label>Filters: {state.algorithmSettings.filters}</label>
                             </div>
+                            <div style={{ textAlign: "center" }}>
+                                <input type="checkbox" disabled={state.generating || state.running} checked={state.algorithmSettings.inpaint} onChange={evt => setInpaint(evt.target.checked)} />
+                                <label>Inpaint</label>
+                            </div>
+                            <div style={{ display: state.algorithmSettings.inpaint ? "block" : "none"}}>
+                                <DrawableCanvas state={state} dispatchState={dispatchState} backgroundImage={selectedImage ? selectedImage.src : ""} />
+                            </div>
 
                             <p style={{ fontSize: "20px" }}>{statusText}</p>
 
                             <div style={{ textAlign: "center" }}>
                                 <Painter state={state} dispatchState={dispatchState} />
 
-                                <Button style={{ visibility: !state.running && !state.generating && state.sourceImage ? "visible" : "hidden" }} onClick={() => dispatchState({ type: "start" })}>Start</Button>
+                                <Button style={{ visibility: !state.running && !state.generating && state.sourceImage ? "visible" : "hidden" }} onClick={() => dispatchState({ type: "requestMask" })}>Start</Button>
                                 <Button style={{ visibility: state.running && state.generating ? "visible" : "hidden" }} onClick={() => dispatchState({ type: "pause" })}>Stop</Button>
                                 <Button onClick={() => dispatchState({ type: "reset" })}>Reset</Button>
                             </div>
@@ -187,7 +212,7 @@ const App: React.FC = () => {
                     </Row>
                 </Col>
                 <Col>
-                    <Carousel onClickItem={(index: number, item: React.ReactNode) => FileSaver.saveAs(state.images[index].uri, `image_iter${state.images[index].iteration}.png`)} selectedItem={state.images.length > 0 ? state.images.length - 1 : 0} showArrows={true} autoPlay={false}>
+                    <Carousel width={state.algorithmSettings.width.toString() + "px"} onClickItem={(index: number, item: React.ReactNode) => FileSaver.saveAs(state.images[index].uri, `image_iter${state.images[index].iteration}.png`)} selectedItem={state.images.length > 0 ? state.images.length - 1 : 0} showArrows={true} autoPlay={false}>
                         {state.images.map((image: ImageData) =>
                             <div key={image.uri}>
                                 <img src={image.uri} alt={image.uri} />

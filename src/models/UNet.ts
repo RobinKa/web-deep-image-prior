@@ -1,6 +1,6 @@
 import * as tf from "@tensorflow/tfjs"
 
-export function createUNet(inputShape: [number, number, number], outputFilters: number, layers: number, filters: number) {
+export function createUNet(inputShape: [number, number, number], outputFilters: number, layers: number, filters: number, skip: boolean) {
     const input = tf.input({ shape: inputShape })
 
     const downs = [input]
@@ -25,8 +25,8 @@ export function createUNet(inputShape: [number, number, number], outputFilters: 
             strides: 2,
             activation: "elu",
         }).apply(ups[ups.length - 1]) as tf.SymbolicTensor
-
-        const concatenated = tf.layers.concatenate({axis: -1}).apply([upsampled, downs[layers - i - 1]])
+        
+        const concatenated = skip ? tf.layers.concatenate({axis: -1}).apply([upsampled, downs[layers - i - 1]]) : upsampled
 
         const processed = tf.layers.conv2d({
             filters: last ? outputFilters : Math.min(256, Math.pow(2, layers - i - 1) * filters),

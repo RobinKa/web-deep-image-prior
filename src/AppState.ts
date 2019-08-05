@@ -1,25 +1,28 @@
 import { useReducer } from "react"
 
 export type ImageData = {
-    uri: string,
-    iteration: number,
+    uri: string
+    iteration: number
 }
 
 export type AlgorithmSettings = {
-    filters: number,
-    layers: number,
-    width: number,
-    height: number,
+    filters: number
+    layers: number
+    width: number
+    height: number
+    inpaint: boolean
 }
 
 export type AppState = {
-    generating: boolean,
-    requestRun: boolean,
-    running: boolean,
-    images: ImageData[],
-    algorithmSettings: AlgorithmSettings,
-    sourceImage: number[] | null,
-    iteration: number,
+    generating: boolean
+    requestRun: boolean
+    requestMask: boolean
+    running: boolean
+    images: ImageData[]
+    mask: number[] | null
+    algorithmSettings: AlgorithmSettings
+    sourceImage: number[] | null
+    iteration: number
 }
 
 export type AppUpdateReset = { type: "reset" }
@@ -48,8 +51,17 @@ export type AppUpdateSetRequestRun = {
     type: "setRequestRun"
     requestRun: boolean
 }
+export type AppUpdateSetMask = {
+    type: "setMask"
+    mask: number[]
+}
+export type AppUpdateRequestMask = {
+    type: "requestMask"
+}
 
-export type AppUpdateAction = AppUpdateReset | AppUpdateStart | AppUpdatePause | AppUpdateAddImageData | AppUpdateAlgorithmSettings | AppUpdateSetSourceImage | AppUpdateIncrementIteration | AppUpdateSetRunning | AppUpdateSetRequestRun
+export type AppUpdateAction = AppUpdateReset | AppUpdateStart | AppUpdatePause | AppUpdateAddImageData |
+                                AppUpdateAlgorithmSettings | AppUpdateSetSourceImage | AppUpdateIncrementIteration |
+                                AppUpdateSetRunning | AppUpdateSetRequestRun | AppUpdateSetMask | AppUpdateRequestMask
 
 function updateAppState(state: AppState, action: AppUpdateAction) {
     const newState = { ...state }
@@ -60,12 +72,15 @@ function updateAppState(state: AppState, action: AppUpdateAction) {
             newState.generating = false
             newState.iteration = 0
             newState.requestRun = false
+            newState.requestMask = false
             newState.algorithmSettings = {
                 filters: 8,
                 layers: 5,
                 width: 256,
                 height: 256,
+                inpaint: false,
             }
+            newState.mask = null
             break
         case "start":
             newState.generating = true
@@ -95,6 +110,13 @@ function updateAppState(state: AppState, action: AppUpdateAction) {
         case "setRequestRun":
             newState.requestRun = action.requestRun
             break
+        case "requestMask":
+            newState.requestMask = true
+            break
+        case "setMask":
+            newState.mask = action.mask
+            newState.requestMask = false
+            break
         default:
             throw new Error("Unhandled action in state update: " + JSON.stringify(action))
     }
@@ -113,8 +135,11 @@ export function useAppState() {
             layers: 5,
             width: 256,
             height: 256,
+            inpaint: false,
         },
         sourceImage: null,
-        requestRun: false
+        requestRun: false,
+        mask: null,
+        requestMask: false
     })
 }

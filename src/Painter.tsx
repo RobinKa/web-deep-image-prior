@@ -2,6 +2,7 @@ import * as tf from "@tensorflow/tfjs"
 import React, { Dispatch, useEffect, useState, useMemo } from "react"
 import { createUNet } from "./models/UNet"
 import { AppState, AppUpdateAction } from "./AppState"
+import { LossOrMetricFn } from "@tensorflow/tfjs-layers/dist/types";
 
 tf.enableProdMode()
 
@@ -11,7 +12,15 @@ type PainterProps = {
 }
 
 function imageTensorFromFlatArray(flat: number[], width: number, height: number) {
-    return tf.transpose(tf.sub(tf.div(tf.tensor1d(flat).reshape([1, height, width, 4]).slice([0, 0, 0, 0], [1, height, width, 3]), 127.5), 1), [0, 2, 1, 3])
+    return tf.transpose(tf.tensor1d(flat).reshape([1, height, width, 4]).slice([0, 0, 0, 0], [1, height, width, 3]), [0, 2, 1, 3])
+}
+
+function scaleImageTensor(x: tf.Tensor) {
+    return tf.sub(tf.div(x, 127.5), 1)
+}
+
+function unscaleImageTensor(x: tf.Tensor) {
+    return tf.mul(tf.add(x, 1), 127.5)
 }
 
 function createMemoryCanvas(width: number, height: number) {
@@ -60,19 +69,29 @@ export function Painter(props: PainterProps) {
                 const noiseShape: [number, number, number] = [state.algorithmSettings.width, state.algorithmSettings.height, 1]
                 const outputFilters = 3
 
-                m = createUNet(noiseShape, outputFilters, state.algorithmSettings.layers, state.algorithmSettings.filters)
-                m.compile({
-                    optimizer: "adam",
-                    loss: "meanAbsoluteError",
-                })
-
+                m = createUNet(noiseShape, outputFilters, state.algorithmSettings.layers, state.algorithmSettings.filters, !state.algorithmSettings.inpaint)
+                
                 n = tf.randomNormal([1].concat(noiseShape))
-
-                it = imageTensorFromFlatArray(state.sourceImage!, state.algorithmSettings.width, state.algorithmSettings.height)
-
+                
+                it = scaleImageTensor(imageTensorFromFlatArray(state.sourceImage!, state.algorithmSettings.width, state.algorithmSettings.height))
+                
                 setModel(m)
                 setNoise(n)
                 setImageTensor(it)
+                
+                let loss: string | LossOrMetricFn = "meanAbsoluteError"
+
+                if (state.algorithmSettings.inpaint) {
+                    const mt = tf.div(imageTensorFromFlatArray(state.mask!, state.algorithmSettings.width, state.algorithmSettings.height), 255)
+                    loss = (x: tf.Tensor, y: tf.Tensor) => {
+                        return tf.losses.absoluteDifference(x, y, mt!)
+                    }
+                }
+
+                m.compile({
+                    optimizer: "adam",
+                    loss: loss,
+                })
             }
 
             (async () => {
