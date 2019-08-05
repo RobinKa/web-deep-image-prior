@@ -78,6 +78,8 @@ function updateAppState(state: AppState, action: AppUpdateAction) {
             break
         case "algorithmSettings":
             newState.algorithmSettings = action.newSettings
+            newState.images = []
+            newState.iteration = 0
             break
         case "setSourceImage":
             newState.sourceImage = action.image
