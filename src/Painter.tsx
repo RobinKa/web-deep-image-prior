@@ -99,8 +99,8 @@ export function Painter(props: PainterProps) {
                         }
                     })
                 }
-                catch {
-                    
+                catch (e) {
+                    console.log(`Exception when running model: ${e}`)
                 }
 
                 dispatchState({
