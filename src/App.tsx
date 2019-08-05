@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useMemo } from 'react'
 import './App.css'
 import { Painter } from './Painter'
 import Slider from 'rc-slider'
-import { Row, Col, Container, Button, Navbar, Nav } from "react-bootstrap"
+import { Row, Col, Container, Button, Navbar, Nav, Image as BSImage } from "react-bootstrap"
 import 'bootstrap/dist/css/bootstrap.css'
 import 'rc-slider/assets/index.css'
 import { useAppState, ImageData } from './AppState'
@@ -10,6 +10,10 @@ import { useDropzone } from 'react-dropzone'
 import { Carousel } from "react-responsive-carousel"
 import FileSaver from "file-saver"
 import "react-responsive-carousel/lib/styles/carousel.min.css"
+
+import sampleImage1 from "./sample-images/balloons_noisy.png"
+import sampleImage2 from "./sample-images/lenna_noisy.png"
+import sampleImage3 from "./sample-images/tiny_fruits.png"
 
 const [defaultWidth, defaultHeight] = [256, 256]
 const defaultLayers = 5
@@ -116,7 +120,7 @@ const App: React.FC = () => {
         } else if (!state.generating && state.running) {
             return "Stopping..."
         } else if (!state.generating && !state.running && !state.sourceImage) {
-            return "Click on the empty canvas to select an image or drop an image on it. None of your data is uploaded as everything is running client-side."
+            return "Choose a sample image. You can also click on the empty canvas to select an image or drop an image on it. None of your data is uploaded as everything is running client-side."
         } else if (!state.generating && !state.running) {
             return "Click start"
         }
@@ -138,10 +142,19 @@ const App: React.FC = () => {
                 <Col>
                     <Row>
                         <Col>
-                            <div style={{ textAlign: "center" }} {...getRootProps()}>
-                                <input {...getInputProps()} />
-                                <canvas style={{ boxShadow: "0px 0px 5px gray" }} ref={canvas} width={state.algorithmSettings.width} height={state.algorithmSettings.height} />
-                            </div>
+                            <Row>
+                                <Col><BSImage fluid width="256px" src={sampleImage1} alt={sampleImage1} onClick={e => setSelectedImage(e.target as HTMLImageElement)} /></Col>
+                                <Col><BSImage fluid width="256px" src={sampleImage2} alt={sampleImage2} onClick={e => setSelectedImage(e.target as HTMLImageElement)} /></Col>
+                                <Col><BSImage fluid width="256px" src={sampleImage3} alt={sampleImage3} onClick={e => setSelectedImage(e.target as HTMLImageElement)} /></Col>
+                            </Row>
+                            <Row>
+                                <Col>
+                                    <div style={{ textAlign: "center" }} {...getRootProps()}>
+                                        <input {...getInputProps()} />
+                                        <canvas style={{ boxShadow: "0px 0px 5px gray" }} ref={canvas} width={state.algorithmSettings.width} height={state.algorithmSettings.height} />
+                                    </div>
+                                </Col>
+                            </Row>
                         </Col>
                         <Col>
                             <div style={{ textAlign: "center" }}>
