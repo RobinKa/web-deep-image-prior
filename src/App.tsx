@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useMemo } from 'react'
 import './App.css'
 import { Painter } from './Painter'
 import Slider from 'rc-slider'
-import { Row, Col, Container, Button } from "react-bootstrap"
+import { Row, Col, Container, Button, Navbar, Nav } from "react-bootstrap"
 import 'bootstrap/dist/css/bootstrap.css'
 import 'rc-slider/assets/index.css'
 import { useAppState, ImageData } from './AppState'
@@ -124,61 +124,69 @@ const App: React.FC = () => {
     }, [state.generating, state.running, state.sourceImage, state.iteration])
 
     return (
-        <Container>
-            <Col>
-                <h1 style={{ textAlign: "center" }}>Deep Image Prior (<a href="https://arxiv.org/abs/1711.10925">Paper</a>)</h1>
-                <a href="https://github.com/RobinKa/web-deep-image-prior"><h3 style={{ textAlign: "center" }}>Source Code</h3></a>
+        <div>
+            <Container>
+                <Navbar bg="dark" variant="dark">
+                    <Navbar.Brand>
+                        Deep Image Prior
+                    </Navbar.Brand>
+                    <Nav.Link href="https://github.com/RobinKa/web-deep-image-prior">Source code</Nav.Link>
+                    <Nav.Link href="https://arxiv.org/abs/1711.10925">Paper</Nav.Link>
+                </Navbar>
+            </Container>
+            <Container style={{marginTop: "20px"}}>
+                <Col>
+                    <Row>
+                        <Col>
+                            <div style={{ textAlign: "center" }} {...getRootProps()}>
+                                <input {...getInputProps()} />
+                                <canvas style={{ boxShadow: "0px 0px 5px gray" }} ref={canvas} width={state.algorithmSettings.width} height={state.algorithmSettings.height} />
+                            </div>
+                        </Col>
+                        <Col>
+                            <div style={{ textAlign: "center" }}>
+                                <Slider disabled={state.generating || state.running} defaultValue={defaultWidth} min={0} max={1024} step={32} onChange={value => setWidth(value)} />
+                                <label>Width: {state.algorithmSettings.width}</label>
+                            </div>
+                            <div style={{ textAlign: "center" }}>
+                                <Slider disabled={state.generating || state.running} defaultValue={defaultHeight} min={0} max={1024} step={32} onChange={value => setHeight(value)} />
+                                <label>Height: {state.algorithmSettings.height}</label>
+                            </div>
+                            <div style={{ textAlign: "center" }}>
+                                <Slider disabled={state.generating || state.running} defaultValue={defaultLayers} min={1} max={20} step={1} onChange={value => setLayers(value)} />
+                                <label>Layers: {state.algorithmSettings.layers}</label>
+                            </div>
+                            <div style={{ textAlign: "center" }}>
+                                <Slider disabled={state.generating || state.running} defaultValue={defaultFilters} min={1} max={256} step={1} onChange={value => setFilters(value)} />
+                                <label>Filters: {state.algorithmSettings.filters}</label>
+                            </div>
 
-                <Row>
-                    <Col>
-                        <div style={{ textAlign: "center" }} {...getRootProps()}>
-                            <input {...getInputProps()} />
-                            <canvas style={{ boxShadow: "0px 0px 5px gray" }} ref={canvas} width={state.algorithmSettings.width} height={state.algorithmSettings.height} />
-                        </div>
-                    </Col>
-                    <Col>
-                        <div style={{ textAlign: "center" }}>
-                            <Slider disabled={state.generating || state.running} defaultValue={defaultWidth} min={0} max={1024} step={32} onChange={value => setWidth(value)} />
-                            <label>Width: {state.algorithmSettings.width}</label>
-                        </div>
-                        <div style={{ textAlign: "center" }}>
-                            <Slider disabled={state.generating || state.running} defaultValue={defaultHeight} min={0} max={1024} step={32} onChange={value => setHeight(value)} />
-                            <label>Height: {state.algorithmSettings.height}</label>
-                        </div>
-                        <div style={{ textAlign: "center" }}>
-                            <Slider disabled={state.generating || state.running} defaultValue={defaultLayers} min={1} max={20} step={1} onChange={value => setLayers(value)} />
-                            <label>Layers: {state.algorithmSettings.layers}</label>
-                        </div>
-                        <div style={{ textAlign: "center" }}>
-                            <Slider disabled={state.generating || state.running} defaultValue={defaultFilters} min={1} max={256} step={1} onChange={value => setFilters(value)} />
-                            <label>Filters: {state.algorithmSettings.filters}</label>
-                        </div>
+                            <p style={{ fontSize: "20px" }}>{statusText}</p>
 
-                        <p style={{ fontSize: "20px" }}>{statusText}</p>
+                            <div style={{ textAlign: "center" }}>
+                                <Painter state={state} dispatchState={dispatchState} />
 
-                        <div style={{ textAlign: "center" }}>
-                            <Painter state={state} dispatchState={dispatchState} />
-
-                            <Button style={{ visibility: !state.running && !state.generating && state.sourceImage ? "visible" : "hidden" }} onClick={() => dispatchState({ type: "start" })}>Start</Button>
-                            <Button style={{ visibility: state.running && state.generating ? "visible" : "hidden" }} onClick={() => dispatchState({ type: "pause" })}>Stop</Button>
-                            <Button onClick={() => dispatchState({ type: "reset" })}>Reset</Button>
-                        </div>
-                    </Col>
-                </Row>
-            </Col>
-            <Col>
-                <Carousel onClickItem={(index: number, item: React.ReactNode) => FileSaver.saveAs(state.images[index].uri, `image_iter${state.images[index].iteration}.png`)} selectedItem={state.images.length > 0 ? state.images.length - 1 : 0} showArrows={true} autoPlay={false}>
-                    {state.images.map((image: ImageData) =>
-                        <div key={image.uri}>
-                            <img src={image.uri} alt={image.uri} />
-                            <p className="legend">
-                                Iteration {image.iteration}
-                            </p>
-                        </div>
-                    )}
-                </Carousel>
-            </Col>
-        </Container>
+                                <Button style={{ visibility: !state.running && !state.generating && state.sourceImage ? "visible" : "hidden" }} onClick={() => dispatchState({ type: "start" })}>Start</Button>
+                                <Button style={{ visibility: state.running && state.generating ? "visible" : "hidden" }} onClick={() => dispatchState({ type: "pause" })}>Stop</Button>
+                                <Button onClick={() => dispatchState({ type: "reset" })}>Reset</Button>
+                            </div>
+                        </Col>
+                    </Row>
+                </Col>
+                <Col>
+                    <Carousel onClickItem={(index: number, item: React.ReactNode) => FileSaver.saveAs(state.images[index].uri, `image_iter${state.images[index].iteration}.png`)} selectedItem={state.images.length > 0 ? state.images.length - 1 : 0} showArrows={true} autoPlay={false}>
+                        {state.images.map((image: ImageData) =>
+                            <div key={image.uri}>
+                                <img src={image.uri} alt={image.uri} />
+                                <p className="legend">
+                                    Iteration {image.iteration}
+                                </p>
+                            </div>
+                        )}
+                    </Carousel>
+                </Col>
+            </Container>
+        </div>
     );
 }
 
