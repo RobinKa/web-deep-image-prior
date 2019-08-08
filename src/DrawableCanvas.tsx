@@ -16,31 +16,38 @@ export default function DrawableCanvas(props: DrawableCanvasProps) {
 
     const canvas = useRef<HTMLCanvasElement>(null)
 
-    function onMouseDown(event: React.MouseEvent<HTMLCanvasElement, MouseEvent>) {
+    function tryStartDraw() {
         if (props.state.step === "idle" && !props.state.shouldRun) {
             setDrawing(true)
         }
     }
 
-    function onMouseUp(event: React.MouseEvent<HTMLCanvasElement, MouseEvent>) {
+    function endDraw() {
         setDrawing(false)
+    }
 
+    function reset() {
+        const cnv = canvas.current!
+        const ctx = cnv.getContext("2d")!
+
+        ctx.fillStyle = "white"
+        ctx.fillRect(0, 0, width, height)
+    }
+
+    function onMouseUp(event: React.MouseEvent<HTMLCanvasElement, MouseEvent>) {
+        endDraw()
         if (event.button === 2) {
-            const cnv = canvas.current!
-            const ctx = cnv.getContext("2d")!
-
-            ctx.fillStyle = "white"
-            ctx.fillRect(0, 0, width, height)
+            reset()
         }
     }
 
-    function onMouseMove(event: React.MouseEvent<HTMLCanvasElement, MouseEvent>) {
+    function onMove(clientPos: [number, number]) {
         if (drawing) {
             const cnv = canvas.current!
             const ctx = cnv.getContext("2d")!
             const bounds = cnv.getBoundingClientRect()
 
-            const mousePos = [event.clientX - bounds.left, event.clientY - bounds.top]
+            const mousePos = [clientPos[0] - bounds.left, clientPos[1] - bounds.top]
             const radius = 5
 
             ctx.beginPath()
@@ -48,6 +55,13 @@ export default function DrawableCanvas(props: DrawableCanvasProps) {
             ctx.fillStyle = "black"
             ctx.fill()
         }
+    }
+
+    function onTouchMove(e: React.TouchEvent<HTMLCanvasElement>) {
+        onMove([
+            e.targetTouches[0] ? e.targetTouches[0].pageX : e.changedTouches[e.changedTouches.length - 1].pageX,
+            e.targetTouches[0] ? e.targetTouches[0].pageY : e.changedTouches[e.changedTouches.length - 1].pageY
+        ])
     }
 
     useEffect(() => {
@@ -67,6 +81,9 @@ export default function DrawableCanvas(props: DrawableCanvasProps) {
     }, [canvas, maskCanvas, dispatchState])
 
     return (
-        <canvas width={width} height={height} ref={canvas} onMouseDown={onMouseDown} onMouseUp={onMouseUp} onMouseMove={onMouseMove} style={{ width: width, height: height, opacity: 0.6 }} />
+        <canvas width={width} height={height} ref={canvas}
+            style={{ width: width, height: height, opacity: 0.6 }}
+            onTouchStart={tryStartDraw} onTouchEnd={endDraw} onTouchMove={onTouchMove}
+            onMouseDown={tryStartDraw} onMouseUp={onMouseUp} onMouseMove={e => onMove([e.clientX, e.clientY])} />
     )
 }
