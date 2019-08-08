@@ -191,6 +191,7 @@ const App: React.FC = () => {
             </Container>
             <Container>
                 <Row>
+                    <Col />
                     <Col {...columnSizes} style={{ padding: "10px" }}>
                         <Row>
                             <p style={{ fontSize: "20px" }}>{statusText}</p>
@@ -220,14 +221,6 @@ const App: React.FC = () => {
                         </Row>
                     </Col>
                     <Col {...columnSizes} style={{ padding: "10px" }}>
-                        <div style={{ width: state.algorithmSettings.width, height: state.algorithmSettings.height, boxShadow: "0px 0px 5px gray" }}>
-                            <img src={displayedImage} alt="" style={{ width: state.algorithmSettings.width, height: state.algorithmSettings.height, position: "absolute" }} />
-                            <div style={{ display: state.algorithmSettings.inpaint ? "block" : "none" }}>
-                                <DrawableCanvas state={state} dispatchState={dispatchState} backgroundImage={displayedImage} />
-                            </div>
-                        </div>
-                    </Col>
-                    <Col {...columnSizes} style={{ padding: "10px" }}>
                         <p style={{ textAlign: "center", fontSize: "20px" }}>Settings</p>
                         <LabeledSlider {...settingsProps} min={32} max={1024} step={32} value={state.algorithmSettings.width} setValue={setWidth} label={"Width"} />
                         <LabeledSlider {...settingsProps} min={32} max={1024} step={32} value={state.algorithmSettings.height} setValue={setHeight} label={"Height"} />
@@ -236,6 +229,19 @@ const App: React.FC = () => {
 
                         <LabeledCheckbox {...settingsProps} value={state.algorithmSettings.inpaint} setValue={setInpaint} label={"Inpaint"} />
                     </Col>
+                    <Col />
+                </Row>
+                <Row>
+                    <Col />
+                    <Col style={{ padding: "10px" }}>
+                        <div style={{ width: state.algorithmSettings.width, height: state.algorithmSettings.height, boxShadow: "0px 0px 5px gray" }}>
+                            <img src={displayedImage} alt="" style={{ width: state.algorithmSettings.width, height: state.algorithmSettings.height, position: "absolute" }} />
+                            <div style={{ display: state.algorithmSettings.inpaint ? "block" : "none" }}>
+                                <DrawableCanvas state={state} dispatchState={dispatchState} backgroundImage={displayedImage} />
+                            </div>
+                        </div>
+                    </Col>
+                    <Col />
                 </Row>
                 <Row>
                     <Col />
