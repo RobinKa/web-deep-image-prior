@@ -14,12 +14,11 @@ export type AlgorithmSettings = {
 }
 
 export type AppState = {
-    generating: boolean
-    requestRun: boolean
-    requestMask: boolean
-    running: boolean
+    step: "idle" | "runIter" | "finishedIter"
+    shouldRun: boolean
+
     images: ImageData[]
-    mask: number[] | null
+    maskCanvas: HTMLCanvasElement | null
     algorithmSettings: AlgorithmSettings
     sourceImage: number[] | null
     iteration: number
@@ -28,10 +27,7 @@ export type AppState = {
 export type AppUpdateReset = { type: "reset" }
 export type AppUpdateStart = { type: "start" }
 export type AppUpdatePause = { type: "pause" }
-export type AppUpdateAddImageData = {
-    type: "addImageData"
-    imageData: ImageData
-}
+
 export type AppUpdateAlgorithmSettings = {
     type: "algorithmSettings"
     newSettings: AlgorithmSettings
@@ -40,28 +36,23 @@ export type AppUpdateSetSourceImage = {
     type: "setSourceImage",
     image: number[]
 }
-export type AppUpdateIncrementIteration = {
-    type: "incrementIteration"
+export type AppUpdateFinishIter = {
+    type: "finishIter",
+    imageData: ImageData | undefined
 }
-export type AppUpdateSetRunning = {
-    type: "setRunning"
-    running: boolean
+export type AppUpdateSetMaskCanvas = {
+    type: "setMaskCanvas"
+    maskCanvas: HTMLCanvasElement | null
 }
-export type AppUpdateSetRequestRun = {
-    type: "setRequestRun"
-    requestRun: boolean
+export type AppUpdateStartIter = {
+    type: "startIter"
 }
-export type AppUpdateSetMask = {
-    type: "setMask"
-    mask: number[]
-}
-export type AppUpdateRequestMask = {
-    type: "requestMask"
+export type AppUpdateStopped = {
+    type: "stopped"
 }
 
-export type AppUpdateAction = AppUpdateReset | AppUpdateStart | AppUpdatePause | AppUpdateAddImageData |
-                                AppUpdateAlgorithmSettings | AppUpdateSetSourceImage | AppUpdateIncrementIteration |
-                                AppUpdateSetRunning | AppUpdateSetRequestRun | AppUpdateSetMask | AppUpdateRequestMask
+export type AppUpdateAction = AppUpdateReset | AppUpdateStart | AppUpdatePause |
+    AppUpdateAlgorithmSettings | AppUpdateSetSourceImage | AppUpdateFinishIter | AppUpdateSetMaskCanvas | AppUpdateStartIter | AppUpdateStopped
 
 function updateAppState(state: AppState, action: AppUpdateAction) {
     const newState = { ...state }
@@ -69,10 +60,8 @@ function updateAppState(state: AppState, action: AppUpdateAction) {
     switch (action.type) {
         case "reset":
             newState.images = []
-            newState.generating = false
+            newState.shouldRun = false
             newState.iteration = 0
-            newState.requestRun = false
-            newState.requestMask = false
             newState.algorithmSettings = {
                 filters: 8,
                 layers: 5,
@@ -80,16 +69,12 @@ function updateAppState(state: AppState, action: AppUpdateAction) {
                 height: 256,
                 inpaint: false,
             }
-            newState.mask = null
             break
         case "start":
-            newState.generating = true
+            newState.shouldRun = true
             break
         case "pause":
-            newState.generating = false
-            break
-        case "addImageData":
-            newState.images.push(action.imageData)
+            newState.shouldRun = false
             break
         case "algorithmSettings":
             newState.algorithmSettings = action.newSettings
@@ -101,21 +86,24 @@ function updateAppState(state: AppState, action: AppUpdateAction) {
             newState.images = []
             newState.iteration = 0
             break
-        case "incrementIteration":
-            newState.iteration += 1
+        case "finishIter":
+            if (newState.shouldRun) {
+                newState.iteration += 1
+                if (action.imageData) {
+                    newState.images.push(action.imageData)
+                }
+            }
+            newState.step = "finishedIter"
             break
-        case "setRunning":
-            newState.running = action.running
+        case "stopped":
+            newState.step = "idle"
+            newState.iteration = 0
             break
-        case "setRequestRun":
-            newState.requestRun = action.requestRun
+        case "startIter":
+            newState.step = "runIter"
             break
-        case "requestMask":
-            newState.requestMask = true
-            break
-        case "setMask":
-            newState.mask = action.mask
-            newState.requestMask = false
+        case "setMaskCanvas":
+            newState.maskCanvas = action.maskCanvas
             break
         default:
             throw new Error("Unhandled action in state update: " + JSON.stringify(action))
@@ -126,8 +114,8 @@ function updateAppState(state: AppState, action: AppUpdateAction) {
 
 export function useAppState() {
     return useReducer(updateAppState, {
-        generating: false,
-        running: false,
+        step: "idle",
+        shouldRun: false,
         iteration: 0,
         images: [],
         algorithmSettings: {
@@ -138,8 +126,6 @@ export function useAppState() {
             inpaint: false,
         },
         sourceImage: null,
-        requestRun: false,
-        mask: null,
-        requestMask: false
+        maskCanvas: null,
     })
 }

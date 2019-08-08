@@ -9,13 +9,15 @@ type DrawableCanvasProps = {
 
 export default function DrawableCanvas(props: DrawableCanvasProps) {
     const [width, height] = [props.state.algorithmSettings.width, props.state.algorithmSettings.height]
+    const maskCanvas = props.state.maskCanvas
+    const dispatchState = props.dispatchState
 
     const [drawing, setDrawing] = useState(false)
 
-    const canvas = useRef<HTMLCanvasElement|null>(null)
+    const canvas = useRef<HTMLCanvasElement>(null)
 
     function onMouseDown(event: React.MouseEvent<HTMLCanvasElement, MouseEvent>) {
-        if (!props.state.generating && !props.state.running) {
+        if (props.state.step === "idle" && !props.state.shouldRun) {
             setDrawing(true)
         }
     }
@@ -46,16 +48,7 @@ export default function DrawableCanvas(props: DrawableCanvasProps) {
             ctx.fillStyle = "black"
             ctx.fill()
         }
-    } 
-
-    useEffect(() => {
-        if (props.state.requestMask) {
-            props.dispatchState({
-                type: "setMask",
-                mask: Array.from(canvas.current!.getContext("2d")!.getImageData(0, 0, width, height).data)
-            })
-        }
-    }, [props.state.requestMask, height, width])
+    }
 
     useEffect(() => {
         const cnv = canvas.current!
@@ -63,6 +56,15 @@ export default function DrawableCanvas(props: DrawableCanvasProps) {
         ctx.fillStyle = "white"
         ctx.fillRect(0, 0, width, height)
     }, [canvas, width, height])
+
+    useEffect(() => {
+        if (canvas.current !== maskCanvas) {
+            dispatchState({
+                type: "setMaskCanvas",
+                maskCanvas: canvas.current
+            })
+        }
+    }, [canvas, maskCanvas, dispatchState])
 
     return (
         <canvas width={width} height={height} ref={canvas} onMouseDown={onMouseDown} onMouseUp={onMouseUp} onMouseMove={onMouseMove} style={{ width: width, height: height, opacity: 0.6 }} />
