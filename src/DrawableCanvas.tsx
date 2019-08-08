@@ -65,9 +65,6 @@ export default function DrawableCanvas(props: DrawableCanvasProps) {
     }, [canvas, width, height])
 
     return (
-        <div style={{ width: width, height: height, boxShadow: "0px 0px 5px gray" }}>
-            <img src={props.backgroundImage} alt="" style={{ width: width, height: height, position: "absolute" }} />
-            <canvas width={width} height={height} ref={canvas} onMouseDown={onMouseDown} onMouseUp={onMouseUp} onMouseMove={onMouseMove} style={{ width: width, height: height, opacity: 0.6 }} />
-        </div>
+        <canvas width={width} height={height} ref={canvas} onMouseDown={onMouseDown} onMouseUp={onMouseUp} onMouseMove={onMouseMove} style={{ width: width, height: height, opacity: 0.6 }} />
     )
 }

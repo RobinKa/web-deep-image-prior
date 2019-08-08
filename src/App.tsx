@@ -1,24 +1,20 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react'
+import React, { useEffect, useState, useMemo, CSSProperties } from 'react'
 import './App.css'
 import { Painter } from './Painter'
-import Slider from 'rc-slider'
 import { Row, Col, Container, Button, Navbar, Nav, Image as BSImage } from "react-bootstrap"
 import 'bootstrap/dist/css/bootstrap.css'
 import 'rc-slider/assets/index.css'
 import { useAppState, ImageData } from './AppState'
 import { useDropzone } from 'react-dropzone'
-import { Carousel } from "react-responsive-carousel"
 import FileSaver from "file-saver"
-import "react-responsive-carousel/lib/styles/carousel.min.css"
+import ReactCompareImage from "react-compare-image"
 
 import sampleImage1 from "./sample-images/car_inpaint.png"
 import sampleImage2 from "./sample-images/lenna_noisy.png"
 import sampleImage3 from "./sample-images/tiny_fruits.png"
 import DrawableCanvas from './DrawableCanvas';
-
-const [defaultWidth, defaultHeight] = [256, 256]
-const defaultLayers = 5
-const defaultFilters = 8
+import LabeledSlider from './LabeledSlider';
+import LabeledCheckbox from './LabeledCheckbox';
 
 const App: React.FC = () => {
     const [state, dispatchState] = useAppState()
@@ -82,18 +78,22 @@ const App: React.FC = () => {
 
     useEffect(() => {
         if (state.mask && !state.generating && !state.requestMask) {
-            console.log("Start")
             dispatchState({ type: "start" })
         }
     }, [state.requestMask, state.generating, dispatchState, state.mask])
 
-    const canvas = useRef<HTMLCanvasElement>(null)
+    const canvas = useMemo(() => {
+        const cnv = document.createElement("canvas")
+        cnv.width = state.algorithmSettings.width
+        cnv.height = state.algorithmSettings.height
+        return cnv
+    }, [state.algorithmSettings.width, state.algorithmSettings.height])
 
     const [selectedImage, setSelectedImage] = useState<HTMLImageElement | null>(null)
 
     useEffect(() => {
         if (selectedImage !== null) {
-            const context = canvas.current!.getContext("2d")!
+            const context = canvas.getContext("2d")!
             context.drawImage(selectedImage, 0, 0, state.algorithmSettings.width, state.algorithmSettings.height)
             const imageData = context.getImageData(0, 0, state.algorithmSettings.width, state.algorithmSettings.height).data
             dispatchState({
@@ -145,6 +145,22 @@ const App: React.FC = () => {
 
     }, [state.generating, state.running, state.sourceImage, state.iteration])
 
+    const displayedImage = selectedImage ? selectedImage.src : ""
+
+    type SettingsProps = {
+        style: CSSProperties,
+        disabled: boolean
+    }
+
+    const settingsProps: SettingsProps = {
+        style: {
+            textAlign: "center"
+        },
+        disabled: state.generating || state.running
+    }
+
+    const [comparisonImageUri, setComparisonImageUri] = useState<string>("")
+
     return (
         <div>
             <Container>
@@ -157,72 +173,63 @@ const App: React.FC = () => {
                 </Navbar>
             </Container>
             <Container style={{ marginTop: "20px" }}>
-                <Col>
-                    <Row>
-                        <Col>
-                            <Row>
-                                <Col><BSImage fluid width="256px" src={sampleImage1} alt={sampleImage1} onClick={e => setSelectedImage(e.target as HTMLImageElement)} /></Col>
-                                <Col><BSImage fluid width="256px" src={sampleImage2} alt={sampleImage2} onClick={e => setSelectedImage(e.target as HTMLImageElement)} /></Col>
-                                <Col><BSImage fluid width="256px" src={sampleImage3} alt={sampleImage3} onClick={e => setSelectedImage(e.target as HTMLImageElement)} /></Col>
-                            </Row>
-                            <Row>
-                                <Col>
-                                    <div style={{ textAlign: "center" }} {...getRootProps()}>
-                                        <input {...getInputProps()} />
-                                        <canvas style={{ boxShadow: "0px 0px 5px gray" }} ref={canvas} width={state.algorithmSettings.width} height={state.algorithmSettings.height} />
-                                    </div>
-                                </Col>
-                            </Row>
-                        </Col>
-                        <Col>
-                            <div style={{ textAlign: "center" }}>
-                                <Slider disabled={state.generating || state.running} defaultValue={defaultWidth} min={0} max={1024} step={32} onChange={value => setWidth(value)} />
-                                <label>Width: {state.algorithmSettings.width}</label>
-                            </div>
-                            <div style={{ textAlign: "center" }}>
-                                <Slider disabled={state.generating || state.running} defaultValue={defaultHeight} min={0} max={1024} step={32} onChange={value => setHeight(value)} />
-                                <label>Height: {state.algorithmSettings.height}</label>
-                            </div>
-                            <div style={{ textAlign: "center" }}>
-                                <Slider disabled={state.generating || state.running} defaultValue={defaultLayers} min={1} max={20} step={1} onChange={value => setLayers(value)} />
-                                <label>Layers: {state.algorithmSettings.layers}</label>
-                            </div>
-                            <div style={{ textAlign: "center" }}>
-                                <Slider disabled={state.generating || state.running} defaultValue={defaultFilters} min={1} max={256} step={1} onChange={value => setFilters(value)} />
-                                <label>Filters: {state.algorithmSettings.filters}</label>
-                            </div>
-                            <div style={{ textAlign: "center" }}>
-                                <input type="checkbox" disabled={state.generating || state.running} checked={state.algorithmSettings.inpaint} onChange={evt => setInpaint(evt.target.checked)} />
-                                <label>Inpaint</label>
-                            </div>
-                            <div style={{ display: state.algorithmSettings.inpaint ? "block" : "none"}}>
-                                <DrawableCanvas state={state} dispatchState={dispatchState} backgroundImage={selectedImage ? selectedImage.src : ""} />
-                            </div>
+                <Row>
+                    <Col>
+                        <p style={{ fontSize: "20px" }}>{statusText}</p>
 
-                            <p style={{ fontSize: "20px" }}>{statusText}</p>
+                        <div style={{ textAlign: "center" }}>
+                            <Painter state={state} dispatchState={dispatchState} />
 
-                            <div style={{ textAlign: "center" }}>
-                                <Painter state={state} dispatchState={dispatchState} />
+                            <Button style={{ visibility: !state.running && !state.generating && state.sourceImage ? "visible" : "hidden" }} onClick={() => dispatchState({ type: "requestMask" })}>Start</Button>
+                            <Button style={{ visibility: state.running && state.generating ? "visible" : "hidden" }} onClick={() => dispatchState({ type: "pause" })}>Stop</Button>
+                            <Button onClick={() => dispatchState({ type: "reset" })}>Reset</Button>
+                        </div>
+                    </Col>
+                    <Col>
+                        <Row>
+                            <Col><BSImage fluid src={sampleImage1} alt={sampleImage1} onClick={e => setSelectedImage(e.target as HTMLImageElement)} /></Col>
+                            <Col><BSImage fluid src={sampleImage2} alt={sampleImage2} onClick={e => setSelectedImage(e.target as HTMLImageElement)} /></Col>
+                            <Col><BSImage fluid src={sampleImage3} alt={sampleImage3} onClick={e => setSelectedImage(e.target as HTMLImageElement)} /></Col>
+                        </Row>
+                        <Row>
+                            <Col>
+                                <div style={{ textAlign: "center" }} {...getRootProps()}>
+                                    <input {...getInputProps()} />
+                                    <p style={{ fontSize: "20px" }}>Click to select an image</p>
+                                </div>
+                            </Col>
+                        </Row>
+                    </Col>
+                    <Col>
+                        <div style={{ width: state.algorithmSettings.width, height: state.algorithmSettings.height, boxShadow: "0px 0px 5px gray" }}>
+                            <img src={displayedImage} alt="" style={{ width: state.algorithmSettings.width, height: state.algorithmSettings.height, position: "absolute" }} />
+                            <div style={{ display: state.algorithmSettings.inpaint ? "block" : "none" }}>
+                                <DrawableCanvas state={state} dispatchState={dispatchState} backgroundImage={displayedImage} />
+                            </div>
+                        </div>
+                    </Col>
+                    <Col>
+                        <p style={{ textAlign: "center", fontSize: "20px" }}>Settings</p>
+                        <LabeledSlider {...settingsProps} min={0} max={1024} step={32} value={state.algorithmSettings.width} setValue={setWidth} label={"Width"} />
+                        <LabeledSlider {...settingsProps} min={0} max={1024} step={32} value={state.algorithmSettings.height} setValue={setHeight} label={"Height"} />
+                        <LabeledSlider {...settingsProps} min={1} max={20} step={1} value={state.algorithmSettings.layers} setValue={setLayers} label={"Layers"} />
+                        <LabeledSlider {...settingsProps} min={1} max={256} step={1} value={state.algorithmSettings.filters} setValue={setFilters} label={"Filters"} />
 
-                                <Button style={{ visibility: !state.running && !state.generating && state.sourceImage ? "visible" : "hidden" }} onClick={() => dispatchState({ type: "requestMask" })}>Start</Button>
-                                <Button style={{ visibility: state.running && state.generating ? "visible" : "hidden" }} onClick={() => dispatchState({ type: "pause" })}>Stop</Button>
-                                <Button onClick={() => dispatchState({ type: "reset" })}>Reset</Button>
-                            </div>
-                        </Col>
-                    </Row>
-                </Col>
-                <Col>
-                    <Carousel width={state.algorithmSettings.width.toString() + "px"} onClickItem={(index: number, item: React.ReactNode) => FileSaver.saveAs(state.images[index].uri, `image_iter${state.images[index].iteration}.png`)} selectedItem={state.images.length > 0 ? state.images.length - 1 : 0} showArrows={true} autoPlay={false}>
-                        {state.images.map((image: ImageData) =>
-                            <div key={image.uri}>
-                                <img src={image.uri} alt={image.uri} />
-                                <p className="legend">
-                                    Iteration {image.iteration}
-                                </p>
-                            </div>
-                        )}
-                    </Carousel>
-                </Col>
+                        <LabeledCheckbox {...settingsProps} value={state.algorithmSettings.inpaint} setValue={setInpaint} label={"Inpaint"} />
+                    </Col>
+                </Row>
+                <Row>
+                    <Col />
+                    <Col style={{ maxWidth: state.algorithmSettings.width }}>
+                        <ReactCompareImage leftImage={displayedImage} rightImage={comparisonImageUri} />
+                    </Col>
+                    <Col />
+                </Row>
+                <Row>
+                    {state.images.map((image: ImageData) =>
+                        <img width="64px" key={image.uri} src={image.uri} alt={image.uri} onClick={(evt) => setComparisonImageUri(image.uri)} />
+                    )}
+                </Row>
             </Container>
         </div>
     );
