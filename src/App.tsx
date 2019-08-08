@@ -159,6 +159,17 @@ const App: React.FC = () => {
         disabled: settingsProps.disabled
     })
 
+    const columnSizes = {
+        xl: 3,
+        l: 3,
+        md: 4,
+        sm: 6,
+        xs: 8
+    }
+
+    const runButtonEnabled = !state.shouldRun && state.step === "idle" && state.maskCanvas !== null && state.sourceImage !== null
+    const stopButtonEnabled = state.shouldRun && state.step !== "idle"
+
     return (
         <div>
             <Painter state={state} dispatchState={dispatchState} />
@@ -180,28 +191,24 @@ const App: React.FC = () => {
             </Container>
             <Container>
                 <Row>
-                    <Col style={{ padding: "10px" }}>
+                    <Col {...columnSizes} style={{ padding: "10px" }}>
                         <Row>
                             <p style={{ fontSize: "20px" }}>{statusText}</p>
                         </Row>
 
                         <Row style={{ textAlign: "center" }}>
                             <Col>
-                                <Button style={{ visibility: !state.shouldRun && state.step === "idle" && state.maskCanvas && state.sourceImage ? "visible" : "hidden" }} onClick={() => dispatchState({ type: "start" })}>Start</Button>
-                            </Col>
-                            <Col>
-                                <Button style={{ visibility: state.shouldRun && state.step !== "idle" ? "visible" : "hidden" }} onClick={() => dispatchState({ type: "pause" })}>Stop</Button>
-                            </Col>
-                            <Col>
+                                <Button disabled={!runButtonEnabled} onClick={() => dispatchState({ type: "start" })}>Start</Button>
+                                <Button disabled={!stopButtonEnabled} onClick={() => dispatchState({ type: "pause" })}>Stop</Button>
                                 <Button onClick={() => dispatchState({ type: "reset" })}>Reset</Button>
                             </Col>
                         </Row>
                     </Col>
-                    <Col style={{ padding: "10px" }}>
+                    <Col {...columnSizes} style={{ padding: "10px" }}>
                         <Row>
-                            <Col><BSImage fluid style={{minWidth: "32px"}} src={sampleImage1} alt={sampleImage1} onClick={selectImage} /></Col>
-                            <Col><BSImage fluid style={{minWidth: "32px"}} src={sampleImage2} alt={sampleImage2} onClick={selectImage} /></Col>
-                            <Col><BSImage fluid style={{minWidth: "32px"}} src={sampleImage3} alt={sampleImage3} onClick={selectImage} /></Col>
+                            <Col><BSImage fluid style={{ minWidth: "32px" }} src={sampleImage1} alt={sampleImage1} onClick={selectImage} /></Col>
+                            <Col><BSImage fluid style={{ minWidth: "32px" }} src={sampleImage2} alt={sampleImage2} onClick={selectImage} /></Col>
+                            <Col><BSImage fluid style={{ minWidth: "32px" }} src={sampleImage3} alt={sampleImage3} onClick={selectImage} /></Col>
                         </Row>
                         <Row>
                             <Col>
@@ -212,7 +219,7 @@ const App: React.FC = () => {
                             </Col>
                         </Row>
                     </Col>
-                    <Col style={{ padding: "10px" }}>
+                    <Col {...columnSizes} style={{ padding: "10px" }}>
                         <div style={{ width: state.algorithmSettings.width, height: state.algorithmSettings.height, boxShadow: "0px 0px 5px gray" }}>
                             <img src={displayedImage} alt="" style={{ width: state.algorithmSettings.width, height: state.algorithmSettings.height, position: "absolute" }} />
                             <div style={{ display: state.algorithmSettings.inpaint ? "block" : "none" }}>
@@ -220,7 +227,7 @@ const App: React.FC = () => {
                             </div>
                         </div>
                     </Col>
-                    <Col style={{ padding: "10px" }}>
+                    <Col {...columnSizes} style={{ padding: "10px" }}>
                         <p style={{ textAlign: "center", fontSize: "20px" }}>Settings</p>
                         <LabeledSlider {...settingsProps} min={32} max={1024} step={32} value={state.algorithmSettings.width} setValue={setWidth} label={"Width"} />
                         <LabeledSlider {...settingsProps} min={32} max={1024} step={32} value={state.algorithmSettings.height} setValue={setHeight} label={"Height"} />
